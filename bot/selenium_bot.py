@@ -170,12 +170,5 @@ def update_cookies(driver: webdriver.Chrome):
     with open(steam_auth_url_path, 'r') as f:
         steam_auth_url = f.read()
     driver.get(url=steam_auth_url)
-    time.sleep(4)
-    input_login = driver.find_element(
-        by=By.CSS_SELECTOR,
-        value="input[type='text']"
-    )
- 
     time.sleep(50)
     pickle.dump(driver.get_cookies(), open(cookies_path, 'wb'))
-    #time.sleep(1000000)
