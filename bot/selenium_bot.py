@@ -3,6 +3,8 @@ import time
 import pickle
 import logging
 
+from bot.utils.my_logger import setup_attempts_logger
+
 logger = logging.getLogger(__name__)
 
 from selenium import webdriver
@@ -13,31 +15,65 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 def get_driver() -> webdriver.Chrome:
+    logging.info("the driver starts...")
     chrome_driver_path = os.path.join("bot", "data", "chromedriver", "chromedriver.exe")
-    print(chrome_driver_path)
     service = Service(executable_path=chrome_driver_path)
     useragent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +\
                 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0'
-    
     options = webdriver.ChromeOptions()
     options.add_argument(f"user-agent={useragent}")
-    return webdriver.Chrome(options=options, service=service)
+    #options.add_argument("--headless")
+    #options.add_argument("--window-size=800,600")
+    options.add_argument("--log-level=3")
+    logging.info('driver is created')
+    url = "https://epicloot.in/event#battle"
+    driver = webdriver.Chrome(options=options, service=service)
+    driver.get(url=url)
+    return driver
 
 def config_browser(driver: webdriver.Chrome):
-    url = "https://epicloot.in/event#battle"
+    logging.info('the browser is being configured...')
     cookies_path = os.path.join('bot', 'data', 'cookies')
-    # driver.maximize_window()
-    driver.get(url=url)
-    for cookie in pickle.load(open(cookies_path, 'rb')):
-        driver.add_cookie(cookie)
+    driver.maximize_window()
+    try:
+        for cookie in pickle.load(open(cookies_path, 'rb')):
+            driver.add_cookie(cookie)
+    except Exception as e:
+        pass
+    logging.info('cookies downloaded successfully')
     driver.refresh()
+    logging.info('cheking cookies...')
+    try:
+        driver.find_element(
+            by=By.CLASS_NAME,
+            value='js-user-balance-coins'
+        )
+    except Exception:
+        logging.info('cookies are out of date')
+        update_cookies(driver)
+    logging.info('cookies are ok')
+    
 
 def start_play(driver: webdriver.Chrome):
+    attempts_logger = setup_attempts_logger()
+    logging.info('running driver')
     prize_path = os.path.join('bot', 'data', 'prizes.txt') 
+    logging.info('start abuse')
     while True:
-        is_map_taken = True
-        driver.refresh()
+        attempts_value = driver.find_element(
+            by=By.XPATH,
+            value='//*[@id="battle"]/div/div[5]/div/div[1]/div[2]/div[1]/div[2]/span'
+        )
+        if int(attempts_value.text):
+            is_map_taken = False
+            driver.refresh()
+            time.sleep(4)
+        else:
+            is_map_taken = True
+            driver.refresh()
+        
         while is_map_taken:
+            logging.info('trying to get a ticket')
             time.sleep(10)
             try:
                 take_map = driver.find_element(
@@ -45,8 +81,10 @@ def start_play(driver: webdriver.Chrome):
                     value='game-gift__take'
                 )
                 take_map.click()
+                logging.info('ticket taken successfully')
                 is_map_taken = False
-            except Exception: 
+            except Exception:
+                logging.info('ticket taking failed')
                 pass
         play_btn = WebDriverWait(driver, 7).until(
             EC.element_to_be_clickable((By.CLASS_NAME, "game-actions__btn"))
@@ -83,9 +121,12 @@ def start_play(driver: webdriver.Chrome):
                             current_hp-=1
                     if current_hp < hp_value:
                         hp_value-=1
+                        logging.info(f'hp value changed to {hp_value}')
                         win_flag = False  
                         break
                 except Exception as ex:
+                    logging.info(f'hp are over')
+                    attempts_logger.info(f'hp are over')
                     win_flag = False    
                     break 
 
@@ -108,12 +149,43 @@ def start_play(driver: webdriver.Chrome):
                     prize = driver.find_element(
                         *prize_info_tuple
                     )
+                    
+                    logging.info(f'prize: {prize.text}')
+                    attempts_logger.info(f'prize: {prize.text}')
                     with open(prize_path, 'a', encoding='utf-8') as f:
                         f.write(prize.text + '\n')
                 except Exception as ex:
-                    print("last cell is mined")
+                    logging.info('last cell was mined')
+                    attempts_logger.info('last cell was mined')
                 finally:
                     break
+        logging.info('start waiting 1 hour')
         time.sleep(1)
         driver.refresh()
         time.sleep(3602)
+
+def update_cookies(driver: webdriver.Chrome):
+    cookies_path = os.path.join('bot', 'data', 'cookies')
+    # vk
+    # https://id.vk.com/auth?app_id=7196521&state=&response_type=code&redirect_uri=https%3A%2F%2Fepicloot.in%2Fuser%2Flogin%2Fvk%2F%3Froute%3Devent&redirect_uri_hash=4df6219a46b7570dc4&code_challenge=&code_challenge_method=&return_auth_hash=7907aa8acb5300982e&scope=0&force_hash=
+    #
+    steam_auth_url_path = os.path.join('bot', 'data', 'steam_auth_url.txt')
+    with open(steam_auth_url_path, 'r') as f:
+        steam_auth_url = f.read()
+    driver.get(url=steam_auth_url)
+    time.sleep(4)
+    input_login = driver.find_element(
+        by=By.CSS_SELECTOR,
+        value="input[type='text']"
+    )
+    input_login.clear()
+    input_login.send_keys("Barabashka656")
+    input_password = driver.find_element(
+        by=By.CSS_SELECTOR,
+        value="input[type='password']"
+    )
+    input_password.clear()
+    input_password.send_keys("alexalex20042004")
+    time.sleep(50)
+    pickle.dump(driver.get_cookies(), open(cookies_path, 'wb'))
+    #time.sleep(1000000)
