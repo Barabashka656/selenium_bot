@@ -166,9 +166,6 @@ def start_play(driver: webdriver.Chrome):
 
 def update_cookies(driver: webdriver.Chrome):
     cookies_path = os.path.join('bot', 'data', 'cookies')
-    # vk
-    # https://id.vk.com/auth?app_id=7196521&state=&response_type=code&redirect_uri=https%3A%2F%2Fepicloot.in%2Fuser%2Flogin%2Fvk%2F%3Froute%3Devent&redirect_uri_hash=4df6219a46b7570dc4&code_challenge=&code_challenge_method=&return_auth_hash=7907aa8acb5300982e&scope=0&force_hash=
-    #
     steam_auth_url_path = os.path.join('bot', 'data', 'steam_auth_url.txt')
     with open(steam_auth_url_path, 'r') as f:
         steam_auth_url = f.read()
@@ -178,14 +175,7 @@ def update_cookies(driver: webdriver.Chrome):
         by=By.CSS_SELECTOR,
         value="input[type='text']"
     )
-    input_login.clear()
-    input_login.send_keys("Barabashka656")
-    input_password = driver.find_element(
-        by=By.CSS_SELECTOR,
-        value="input[type='password']"
-    )
-    input_password.clear()
-    input_password.send_keys("alexalex20042004")
+ 
     time.sleep(50)
     pickle.dump(driver.get_cookies(), open(cookies_path, 'wb'))
     #time.sleep(1000000)
