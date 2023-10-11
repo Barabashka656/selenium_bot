@@ -12,7 +12,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
+from selenium.webdriver.common.action_chains import ActionChains
 
 def get_driver() -> webdriver.Chrome:
     logging.info("the driver starts...")
@@ -23,18 +23,18 @@ def get_driver() -> webdriver.Chrome:
     options = webdriver.ChromeOptions()
     options.add_argument(f"user-agent={useragent}")
     #options.add_argument("--headless")
-    #options.add_argument("--window-size=800,600")
+    options.add_argument("--window-size=1050,750")
     options.add_argument("--log-level=3")
-    logging.info('driver is created')
-    url = "https://epicloot.in/event#battle"
     driver = webdriver.Chrome(options=options, service=service)
+    #driver.maximize_window()
+    url = "https://epicloot.in/event#battle"
     driver.get(url=url)
+    logging.info('driver is created')
     return driver
 
 def config_browser(driver: webdriver.Chrome):
     logging.info('the browser is being configured...')
     cookies_path = os.path.join('bot', 'data', 'cookies')
-    driver.maximize_window()
     try:
         for cookie in pickle.load(open(cookies_path, 'rb')):
             driver.add_cookie(cookie)
@@ -71,7 +71,14 @@ def start_play(driver: webdriver.Chrome):
         else:
             is_map_taken = True
             driver.refresh()
-        
+        scroll_down = driver.find_element(
+            by=By.XPATH,
+            value='//*[@id="battle"]/div/div[5]/div/ul/li[1]/p'
+        )
+        actions = ActionChains(driver)
+        actions.move_to_element(scroll_down)
+        actions.perform()
+
         while is_map_taken:
             logging.info('trying to get a ticket')
             time.sleep(10)
@@ -80,6 +87,7 @@ def start_play(driver: webdriver.Chrome):
                     by=By.CLASS_NAME,
                     value='game-gift__take'
                 )
+               
                 take_map.click()
                 logging.info('ticket taken successfully')
                 is_map_taken = False
